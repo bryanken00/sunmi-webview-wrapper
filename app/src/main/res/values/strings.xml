@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Print Composer</string>
+    <string name="printer_service_missing">Sunmi print service not found on this device.</string>
+    <string name="no_image_picker">No app on this device can pick an image.</string>
+</resources>

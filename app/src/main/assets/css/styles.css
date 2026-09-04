@@ -1,0 +1,846 @@
+/*
+ * Styling for the on-device receipt builder.
+ *
+ * Target is a Sunmi V2-class handheld: roughly 360 CSS px wide, finger input,
+ * and a WebView old enough that flexbox `gap` cannot be relied on - spacing is
+ * done with margins throughout for that reason.
+ */
+
+:root {
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --ok: #059669;
+  --ok-soft: #ecfdf5;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1120;
+    --surface: #111827;
+    --surface-2: #0f172a;
+    --border: #1f2937;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --accent: #818cf8;
+    --accent-soft: #1e1b4b;
+    --ok: #34d399;
+    --ok-soft: #052e26;
+    --warn: #fbbf24;
+    --warn-soft: #292014;
+    --shadow: none;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Rules below set `display` on elements the app toggles with [hidden]; without
+   this the UA's display:none loses on specificity and hidden nodes stay visible. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Roboto", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 10px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.chip {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.chip-idle {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.chip-ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.chip-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  padding: 6px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  flex: 1 1 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tab.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+
+.scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+
+.panel {
+  display: none;
+}
+
+.panel.is-active {
+  display: block;
+}
+
+.card {
+  margin-bottom: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+
+.field {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field > span b {
+  color: var(--accent);
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+textarea {
+  resize: vertical;
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.field-row {
+  display: flex;
+  margin: 0 -5px 12px;
+}
+
+.field-row:last-child {
+  margin-bottom: 0;
+}
+
+.field-row .field {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0 5px;
+}
+
+/* Switch */
+
+.switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.switch:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.switch > span {
+  min-width: 0;
+  padding-right: 10px;
+}
+
+.switch strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.switch small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch i {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s ease;
+}
+
+.switch i::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.switch input:checked + i {
+  background: var(--accent);
+}
+
+.switch input:checked + i::after {
+  transform: translateX(18px);
+}
+
+/* Segmented control */
+
+.segmented {
+  display: flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.segmented button {
+  flex: 1 1 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.segmented button.is-active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+
+.empty-state {
+  padding: 26px 20px 22px;
+  margin-bottom: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  text-align: center;
+  background: var(--surface);
+}
+
+.empty-mark {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--faint);
+}
+
+.empty-state h2 {
+  margin: 10px 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Block cards ──────────────────────────────────────────────────────────── */
+
+.block {
+  margin-bottom: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.block.is-open {
+  border-color: var(--accent);
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px 10px 12px;
+}
+
+.block-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: 10px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.block-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.block-title strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.block-summary {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: "Roboto Mono", "Courier New", monospace;
+}
+
+.block-tools {
+  flex: 0 0 auto;
+  display: flex;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  margin-left: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.icon-btn[disabled] {
+  opacity: 0.35;
+}
+
+.icon-danger {
+  color: #dc2626;
+}
+
+.block-body {
+  padding: 4px 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.block-body > .field:first-child,
+.block-body > div:first-child {
+  margin-top: 12px;
+}
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+
+.palette-card {
+  border-style: dashed;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  margin: -4px;
+}
+
+.palette-btn {
+  flex: 1 1 30%;
+  min-width: 92px;
+  margin: 4px;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.palette-icon {
+  display: block;
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--accent);
+}
+
+.palette-label {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ── Logo picker ──────────────────────────────────────────────────────────── */
+
+.picker {
+  display: flex;
+  margin: 12px -5px 12px;
+}
+
+.pick {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0 5px;
+  padding: 8px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pick.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pick img,
+.pick-empty {
+  display: block;
+  width: 100%;
+  height: 62px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.pick-empty {
+  position: relative;
+  border: 1px dashed var(--border);
+}
+
+.pick-empty img {
+  height: 60px;
+  margin: 0;
+}
+
+.pick-plus {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  color: var(--faint);
+}
+
+/* ── Paper preview ────────────────────────────────────────────────────────── */
+
+.paper-wrap {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.paper {
+  margin: 0 auto;
+  padding: 10px 8px;
+  background: #fff;
+  color: #000;
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.18);
+  /* The paper's width is set in `ch` of THIS font, so the column count is
+     exact rather than a guess at the monospace advance. Everything inside
+     inherits it, and the size variants are the printer's own font ratios
+     (36/24 and 48/24) so a large line takes the same share of the paper here
+     as it will on the roll. */
+  font-family: "Roboto Mono", "Courier New", monospace;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+/* Sticker stock: the preview is the actual bitmap that gets printed, so its
+   own bounds are the label's bounds - nothing has to be drawn on top. */
+.paper.is-label {
+  padding: 8px;
+}
+
+.label-bitmap {
+  display: block;
+  /* The real dot pattern the head will burn, not a resampled approximation. */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  outline: 1px dashed #cbd5e1;
+}
+
+.nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.nudge .btn {
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.nudge span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.gauge {
+  margin: 0 0 12px;
+}
+
+.gauge-text {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gauge-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.15s ease;
+}
+
+.gauge.is-over .gauge-text {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.gauge.is-over .gauge-fill {
+  background: #dc2626;
+}
+
+.paper-empty {
+  margin: 20px 0;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.paper .r-text {
+  margin: 0;
+  font-family: inherit;
+  font-size: 1em;
+  /* `pre`, not `pre-wrap`: the text is already wrapped to the column count, and
+     letting the browser re-wrap it would break a divider onto a second line
+     whenever rounding leaves it a fraction of a pixel short. */
+  white-space: pre;
+}
+
+.paper .r-size-large {
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.paper .r-size-xlarge {
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.paper .r-left {
+  text-align: left;
+}
+
+.paper .r-center {
+  text-align: center;
+}
+
+.paper .r-right {
+  text-align: right;
+}
+
+.paper .r-row {
+  display: block;
+}
+
+.paper .r-img {
+  display: inline-block;
+  max-width: 100%;
+  /* Pixelated, not smoothed - this is the actual dot pattern that gets burned. */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+}
+
+.paper .r-code {
+  display: inline-block;
+  margin: 5px 0;
+  padding: 5px 7px;
+  border: 1px dashed #94a3b8;
+  text-align: center;
+  font-family: "Courier New", monospace;
+  font-size: 9px;
+  word-break: break-all;
+}
+
+.paper .r-code-tag {
+  display: block;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ── Buttons / actions ────────────────────────────────────────────────────── */
+
+.btn {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary[disabled] {
+  opacity: 0.6;
+}
+
+.btn-ghost {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.actions .btn {
+  margin-right: 8px;
+}
+
+.actions .btn:last-child {
+  flex: 1 1 auto;
+  margin-right: 0;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  transform: translate(-50%, 12px);
+  max-width: 90%;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  font-size: 13px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.is-shown {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

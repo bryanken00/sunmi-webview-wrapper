@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Print Composer</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">P</span>
+          <div>
+            <h1>Print Composer</h1>
+            <p id="channelLabel">Checking printer&hellip;</p>
+          </div>
+        </div>
+        <button type="button" id="statusChip" class="chip chip-idle">&hellip;</button>
+      </header>
+
+      <nav class="tabs" id="tabs">
+        <button type="button" class="tab is-active" data-tab="design">Design</button>
+        <button type="button" class="tab" data-tab="preview">Preview</button>
+        <button type="button" class="tab" data-tab="setup">Setup</button>
+      </nav>
+
+      <main class="scroll">
+        <!-- ── Design: the blank canvas ──────────────────────────────────── -->
+        <section class="panel is-active" data-panel="design">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-mark">&#9633;</div>
+            <h2>Blank page</h2>
+            <p>Nothing to print yet. Add a block below to start building.</p>
+          </div>
+
+          <div id="blockList" class="block-list"></div>
+
+          <div class="card palette-card">
+            <h2>Add a block</h2>
+            <div class="palette" id="palette"></div>
+          </div>
+        </section>
+
+        <!-- ── Preview ───────────────────────────────────────────────────── -->
+        <section class="panel" data-panel="preview">
+          <div class="card">
+            <h2>As it will print</h2>
+            <p class="hint" id="previewMeta"></p>
+
+            <div class="gauge" id="labelGauge" hidden>
+              <div class="gauge-text" id="gaugeText"></div>
+              <div class="gauge-track"><div class="gauge-fill" id="gaugeFill"></div></div>
+            </div>
+
+            <div class="paper-wrap">
+              <div class="paper" id="paperPreview"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── Setup ─────────────────────────────────────────────────────── -->
+        <section class="panel" data-panel="setup">
+          <div class="card">
+            <h2>Paper</h2>
+            <div class="field">
+              <span>Stock</span>
+              <div class="segmented" id="paperSeg">
+                <button type="button" data-paper="58">58 mm</button>
+                <button type="button" data-paper="80">80 mm</button>
+                <button type="button" data-paper="50x30">50&times;30 label</button>
+              </div>
+            </div>
+            <p class="hint" id="paperHint"></p>
+
+            <label class="field" id="rollFeedField">
+              <span>Feed lines after printing</span>
+              <input type="number" id="feedLines" min="0" max="10" step="1" />
+            </label>
+          </div>
+
+          <div class="card" id="labelCard">
+            <h2>Label advance</h2>
+
+            <label class="switch">
+              <span>
+                <strong>Advance to the next label</strong>
+                <small>Feed an exact distance after each sticker</small>
+              </span>
+              <input type="checkbox" id="labelFeed" />
+              <i></i>
+            </label>
+
+            <div class="field">
+              <span>Label pitch <b id="pitchValue">33.0 mm</b></span>
+              <input type="range" id="labelPitch" min="30" max="60" step="0.5" />
+              <div class="nudge">
+                <button type="button" class="btn btn-ghost" id="pitchDown">&minus;1 dot</button>
+                <span id="pitchDots">264 dots</span>
+                <button type="button" class="btn btn-ghost" id="pitchUp">+1 dot</button>
+              </div>
+            </div>
+
+            <p class="hint">
+              Top of one sticker to the top of the next &mdash; the label plus the
+              gap. With no gap sensor this is what keeps successive labels lined
+              up, so measure it on your roll and fine-tune with the calibration
+              strip.
+            </p>
+
+            <label class="field">
+              <span>Copies per print</span>
+              <input type="number" id="copies" min="1" max="50" step="1" />
+            </label>
+
+            <button type="button" class="btn btn-ghost btn-block" id="calibrateBtn">
+              Print calibration strip
+            </button>
+            <p class="hint">
+              Prints three stickers with a bar at the top and bottom edge of each.
+              If the bars sit on the edges of all three, the pitch is right; if
+              they creep up the pitch is short, if they creep down it is long.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>Printer</h2>
+            <p class="hint" id="channelHint"></p>
+            <button type="button" class="btn btn-ghost btn-block" id="recheckBtn">
+              Check printer again
+            </button>
+          </div>
+
+          <div class="card">
+            <h2>Document</h2>
+            <p class="hint">
+              Your layout is saved on this device as you edit it.
+            </p>
+            <button type="button" class="btn btn-ghost btn-block" id="clearBtn">
+              Clear the page
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <footer class="actions">
+        <button type="button" class="btn btn-ghost" id="previewBtn">Preview</button>
+        <button type="button" class="btn btn-primary" id="printBtn">Print</button>
+      </footer>
+    </div>
+
+    <input type="file" id="imageFile" accept="image/*" hidden />
+    <div class="toast" id="toast" role="status"></div>
+
+    <script src="js/logo.js"></script>
+    <script src="js/doc.js"></script>
+    <script src="js/qr.js"></script>
+    <script src="js/code128.js"></script>
+    <script src="js/label.js"></script>
+    <script src="js/bridge.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
