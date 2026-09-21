@@ -5,16 +5,29 @@
  * carries no build step — same pipeline, written for the older WebView that
  * ships on Sunmi hardware (no optional chaining, no spread, no flatMap).
  *
- * A receipt printer has no greys: each dot is burned or it is not. A colour PNG
- * gives mud and a plain threshold silently erases light tones, so the pipeline
+ * A receipt printer has no greys: each dot is burned or it is not. The pipeline
  * is flatten onto white, trim the dead margin, scale to the head's exact dot
- * width, then Floyd-Steinberg dither to pure black and white.
+ * width, then reduce to pure black and white.
+ *
+ * That last step has two answers and the caller picks. A photograph needs
+ * Floyd-Steinberg dithering, which keeps light tones visible as a stipple
+ * instead of dropping them. A logo needs a threshold: its strokes are already
+ * solid, and a stipple laid over them fuses into grey mush once the head's heat
+ * spreads between neighbouring dots.
  */
 (function (global) {
   "use strict";
 
   /** Luminance at or above this counts as blank paper when trimming margins. */
   var BLANK_THRESHOLD = 245;
+
+  /**
+   * Cut-off for the line-art path, where the image is thresholded rather than
+   * dithered. Above the midpoint on purpose: scaling a logo down to the head's
+   * dot width blends its strokes toward white, and at 128 the thin ones drop
+   * out. 160 keeps them.
+   */
+  var LINE_ART_THRESHOLD = 160;
 
   /** Rec. 601 luma - matches how the eye weights the channels. */
   function luminance(r, g, b) {
@@ -105,12 +118,20 @@
    *
    * @param {string} src - Image URL or data: URI
    * @param {number} dotWidth - Target width in printer dots (<= head width)
-   * @param {number} [maxHeightRatio] - Cap on height as a multiple of the head
-   *   width, so a tall image cannot run away with the paper
+   * @param {object|number} [options] - `maxHeightRatio` caps the height as a
+   *   multiple of the head width, so a tall image cannot run away with the
+   *   paper. `dither` picks the pipeline: true diffuses the error into a
+   *   stipple, which is right for a photograph and wrong for a logo, because at
+   *   203dpi the head's heat spreads between neighbouring dots and a stipple
+   *   fuses into grey mush. False thresholds instead, keeping edges hard. A
+   *   number is accepted in place of the object as the old maxHeightRatio.
    * @returns {Promise<{dataUrl: string, base64: string, width: number, height: number}>}
    */
-  function prepareLogo(src, dotWidth, maxHeightRatio) {
-    var ratio = typeof maxHeightRatio === "number" ? maxHeightRatio : 0.75;
+  function prepareLogo(src, dotWidth, options) {
+    var settings = typeof options === "number" ? { maxHeightRatio: options } : options || {};
+    var ratio =
+      typeof settings.maxHeightRatio === "number" ? settings.maxHeightRatio : 0.75;
+    var useDither = settings.dither === true;
 
     return loadImage(src).then(function (image) {
       var measured = flattenAndMeasure(image);
@@ -153,11 +174,17 @@
         gray[i] = luminance(data[p], data[p + 1], data[p + 2]);
       }
 
-      dither(gray, targetWidth, targetHeight);
+      var cut = LINE_ART_THRESHOLD;
+      if (useDither) {
+        dither(gray, targetWidth, targetHeight);
+        // The dither already decided each pixel; anything but the midpoint here
+        // would undo half of its work.
+        cut = 128;
+      }
 
       for (var j = 0; j < gray.length; j += 1) {
         var q = j * 4;
-        var value = gray[j] < 128 ? 0 : 255;
+        var value = gray[j] < cut ? 0 : 255;
         data[q] = value;
         data[q + 1] = value;
         data[q + 2] = value;

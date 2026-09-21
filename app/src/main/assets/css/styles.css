@@ -225,6 +225,16 @@ body {
   color: var(--muted);
 }
 
+/*
+ * Controls that exist but cannot do anything in the current mode. Dimmed and
+ * inert rather than hidden: what is adjustable should stay discoverable, so the
+ * reason it is greyed out can be read right above it.
+ */
+.is-inert {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 /* ── Fields ───────────────────────────────────────────────────────────────── */
 
 .field {

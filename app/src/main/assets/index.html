@@ -80,6 +80,92 @@
             </label>
           </div>
 
+          <div class="card" id="inkCard">
+            <h2>Text rendering</h2>
+
+            <div class="field" id="textModeField">
+              <span>Render text as</span>
+              <div class="segmented" id="textModeSeg">
+                <button type="button" data-mode="printer">Printer font</button>
+                <button type="button" data-mode="bitmap">Bitmap</button>
+              </div>
+            </div>
+            <p class="hint" id="textModeHint"></p>
+
+            <div id="inkTuning">
+            <div class="field">
+              <span>Preset</span>
+              <div class="segmented" id="inkSeg">
+                <button type="button" data-ink="light">Light</button>
+                <button type="button" data-ink="normal">Normal</button>
+                <button type="button" data-ink="heavy">Heavy</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>Font</span>
+              <div class="segmented" id="inkFamilySeg">
+                <button type="button" data-family="monospace">Mono</button>
+                <button type="button" data-family="sans">Sans</button>
+                <button type="button" data-family="serif">Serif</button>
+              </div>
+            </div>
+            <p class="hint" id="inkFamilyHint"></p>
+
+            <div class="field">
+              <span>Weight</span>
+              <div class="segmented" id="inkWeightSeg">
+                <button type="button" data-weight="normal">Normal</button>
+                <button type="button" data-weight="bold">Bold</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <span>Text size <b id="columnsValue">32 columns</b></span>
+              <input type="range" id="inkColumns" min="12" max="48" step="1" />
+            </div>
+            <p class="hint" id="columnsHint">
+              Characters per line. Fewer columns means bigger letters, and big
+              letters print far more reliably than small ones.
+            </p>
+
+            <div class="field">
+              <span>Stroke &mdash; vertical stems <b id="strokeXValue">0.5 dots</b></span>
+              <input type="range" id="inkStrokeX" min="0" max="2" step="0.25" />
+            </div>
+
+            <div class="field">
+              <span>Stroke &mdash; horizontal bars <b id="strokeYValue">0.5 dots</b></span>
+              <input type="range" id="inkStrokeY" min="0" max="2" step="0.25" />
+            </div>
+            <p class="hint">
+              Thickens the strokes by redrawing them offset. The two axes fix
+              different things: the first widens upright stems like the sides of
+              an H, the second the flat bars like its crossbar and the waist of
+              an e. If letters look half-there, it is usually the horizontal one.
+            </p>
+
+            <div class="field">
+              <span>Darkness <b id="thresholdValue">200</b></span>
+              <input type="range" id="inkThreshold" min="128" max="248" step="8" />
+            </div>
+            <p class="hint">
+              How much grey counts as a dot to burn. Higher keeps more of each
+              anti-aliased edge, so text gets fatter and darker; too high and the
+              holes in e, a and o fill in.
+            </p>
+
+            <div class="field">
+              <span>Line spacing <b id="pitchLineValue">1.25&times;</b></span>
+              <input type="range" id="inkPitch" min="1" max="2.5" step="0.05" />
+            </div>
+
+            <button type="button" class="btn btn-ghost btn-block" id="inkReset">
+              Reset text rendering to defaults
+            </button>
+            </div>
+          </div>
+
           <div class="card" id="labelCard">
             <h2>Label advance</h2>
 

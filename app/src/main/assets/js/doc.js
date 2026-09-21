@@ -11,7 +11,7 @@
  *   { type: "columns", left, right }
  *   { type: "divider", char }
  *   { type: "space",   lines }
- *   { type: "image",   source, dataUrl, widthPct, align }
+ *   { type: "image",   source, dataUrl, widthPct, align, dither }
  *   { type: "qr",      data, moduleSize, align }
  *   { type: "barcode", data, height, showText, align }
  *
@@ -115,6 +115,9 @@
       block.dataUrl = '';
       block.widthPct = 70;
       block.align = 'center';
+      // Line art by default: most things printed here are logos, and a dither
+      // laid over solid strokes prints as grey mush. See ReceiptLogo.prepareLogo.
+      block.dither = false;
     } else if (type === 'qr') {
       block.data = '';
       block.moduleSize = 6;
@@ -147,6 +150,32 @@
       labelPitchMm: 33,
       /** How many identical stickers one Print produces. */
       copies: 1,
+      /**
+       * How label text is drawn - see Label.INK_LEVELS. Settings rather than
+       * constants because the right values depend on the head, the stock and
+       * how worn the printer is, none of which are knowable from here.
+       */
+      ink: { family: 'monospace', weight: 'bold', strokeX: 0.5, strokeY: 0.5, threshold: 200, pitch: 1.25 },
+      /**
+       * Characters per line. Fewer means a bigger font, since the font is
+       * fitted to the head width divided by this. 0 or missing means the
+       * paper's own column count.
+       */
+      columns: 0,
+      /**
+       * How text reaches the paper on continuous stock:
+       *
+       *   'printer' - printText(), typeset by the printer in its ROM font.
+       *               Fast, and the sharpest thing the hardware can do, but the
+       *               font is the one font it has.
+       *   'bitmap'  - drawn here and sent as an image, which is what makes the
+       *               weight, family and size settings mean anything.
+       *
+       * Die-cut stock ignores this and is always a bitmap: a sensorless advance
+       * needs every label to consume the same number of dots, which only a
+       * fixed-height bitmap guarantees.
+       */
+      textMode: 'printer',
       blocks: [],
     };
   }
@@ -277,7 +306,12 @@
    */
   function compile(state, images) {
     var paper = PAPER_SIZES[state.paper] || PAPER_SIZES[DEFAULT_PAPER];
-    var chars = paper.chars;
+    // Text size is expressed as a column count, because that is the thing it
+    // actually changes. In label mode the font is derived from the head width
+    // divided by the columns, so asking for fewer columns is what makes the
+    // glyphs bigger - and wrapping, dividers and two-column rows all stay
+    // correct because they are counted in the same columns.
+    var chars = Math.max(8, Math.min(paper.chars, Math.round(Number(state.columns) || paper.chars)));
     var out = [];
     var prepared = images || {};
 
@@ -428,7 +462,7 @@
     }
     if (block.type === 'image') {
       return (block.source === 'custom' ? 'Picked image' : 'Default image') +
-        ' at ' + block.widthPct + '%';
+        ' at ' + block.widthPct + '% · ' + (block.dither ? 'photo' : 'line art');
     }
     if (block.type === 'qr') return block.data ? String(block.data).slice(0, 40) : 'No content';
     if (block.type === 'barcode') {

@@ -175,11 +175,52 @@
     return true;
   }
 
+  /**
+   * Print a continuous-roll document as one bitmap.
+   *
+   * Same idea as printLabel, minus the registration: nothing has to land in a
+   * fixed place, so the bitmap is only as tall as the content and the trailing
+   * feed stays whole lines, exactly as the native path leaves it. What it buys
+   * is the font - weight, family and size are ours here, where printText only
+   * ever gets the printer's own ROM face.
+   */
+  function printRollBitmap(api, compiled, label) {
+    if (!hasMethod(api, 'printBitmapBase64')) return false;
+
+    if (!callSafely(api, 'initLine')) callSafely(api, 'printerInit');
+    // The bitmap is the full head width, so alignment is moot - but the printer
+    // remembers it between jobs, and a stale centre would shift the image.
+    callSafely(api, 'setAlignment', 0);
+
+    if (!callSafely(api, 'printBitmapBase64', label.base64)) return false;
+
+    // compile() puts the trailing feed in as a block, which the bitmap skips.
+    for (var i = 0; i < compiled.blocks.length; i += 1) {
+      if (compiled.blocks[i].type === 'feed') {
+        callSafely(api, 'lineWrap', compiled.blocks[i].lines);
+        break;
+      }
+    }
+
+    // Finish the job the same way the native path does, or a bitmap receipt
+    // would be left uncut and unpresented under the head.
+    if (!callSafely(api, 'autoOut')) callSafely(api, 'cutPaper');
+
+    return true;
+  }
+
   function printViaBridge(bridge, compiled, label) {
     var api = bridge.api;
 
-    // Label mode replaces the whole block-by-block path.
-    if (compiled.paper.sticker && label) return printLabel(api, compiled, label);
+    // A bitmap was rendered, so it is what gets printed - block-by-block native
+    // printing cannot reproduce it. Die-cut stock always takes this path;
+    // continuous stock only when the document asked to be drawn rather than
+    // typeset by the printer.
+    if (label) {
+      return compiled.paper.sticker
+        ? printLabel(api, compiled, label)
+        : printRollBitmap(api, compiled, label);
+    }
 
     var textMethod = findMethod(api, TEXT_METHODS);
     var rawMethod = findMethod(api, RAW_METHODS);
@@ -403,11 +444,12 @@
           '.r-code { display:inline-block; margin:2mm 0; padding:2mm; border:0.4mm dashed #000;' +
           ' font-family:"Courier New",monospace; font-size:' + (fontMm * 0.9).toFixed(2) + 'mm; word-break:break-all; }' +
           '.r-code-tag { display:block; font-weight:700; }' +
-          // Label mode has already rendered the sticker to a bitmap at the
-          // head's exact dot pitch; print that rather than re-laying it out.
+          // A bitmap was already rendered at the head's exact dot pitch; print
+          // that rather than re-laying it out. True of every sticker, and of a
+          // roll document set to draw its own text.
           '.r-label { display:block; width:' + printableMm + 'mm; image-rendering:pixelated; }' +
           '</style></head><body>' +
-          (compiled.paper.sticker && label
+          (label
             ? '<img class="r-label r-img" src="' + label.dataUrl + '" alt="" />'
             : blocksToHtml(compiled, true)) +
           '</body></html>'

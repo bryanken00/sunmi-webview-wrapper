@@ -56,6 +56,19 @@
       if (typeof saved.labelFeed === 'boolean') state.labelFeed = saved.labelFeed;
       if (typeof saved.labelPitchMm === 'number') state.labelPitchMm = saved.labelPitchMm;
       if (typeof saved.copies === 'number') state.copies = saved.copies;
+      if (typeof saved.columns === 'number') state.columns = saved.columns;
+      if (saved.textMode === 'printer' || saved.textMode === 'bitmap') {
+        state.textMode = saved.textMode;
+      }
+
+      // `ink` was a preset name before the individual controls existed, so a
+      // document saved by that build restores as a string. Expanding it here
+      // means the sliders open on what the label was actually printing.
+      if (typeof saved.ink === 'string' && Label.INK_LEVELS[saved.ink]) {
+        state.ink = Label.inkSettings(saved.ink);
+      } else if (saved.ink && typeof saved.ink === 'object') {
+        state.ink = Label.inkSettings(saved.ink);
+      }
 
       // Ids are handed back out this session, so the counter has to clear the
       // highest one restored or two blocks would share an image cache slot.
@@ -133,7 +146,7 @@
     var tag = block.source === 'custom' && block.dataUrl
       ? 'custom:' + source.length + ':' + source.slice(-32)
       : 'default';
-    return tag + '|' + dots;
+    return tag + '|' + dots + '|' + (block.dither === true ? 'dither' : 'line');
   }
 
   /** Dither every image block whose inputs changed. @returns {Promise<void>} */
@@ -153,7 +166,9 @@
 
       jobs.push(
         (function (target, wanted) {
-          return ReceiptLogo.prepareLogo(imageSource(target), dots).then(
+          return ReceiptLogo.prepareLogo(imageSource(target), dots, {
+            dither: target.dither === true,
+          }).then(
             function (prepared) {
               images[target.id] = prepared;
               imageKeys[target.id] = wanted;
@@ -412,6 +427,19 @@
           block.widthPct = value;
           touch();
         })
+      );
+      body.appendChild(
+        segmentedField('Detail', [
+          { value: 'line', label: 'Line art' },
+          { value: 'photo', label: 'Photo' },
+        ], block.dither === true ? 'photo' : 'line', function (value) {
+          block.dither = value === 'photo';
+          touch();
+        })
+      );
+      body.appendChild(
+        el('p', 'hint', 'Line art keeps edges hard, which is what a logo needs. ' +
+          'Photo dithers to fake greys, and prints darker and softer.')
       );
       body.appendChild(
         segmentedField('Align', ALIGN_OPTIONS, block.align, function (value) {
@@ -704,26 +732,34 @@
       return;
     }
 
-    if (compiled.paper.sticker) {
+    if (compiled.paper.sticker || state.textMode === 'bitmap') {
       // The preview IS the bitmap that gets printed, at the head's exact dot
-      // pitch - so this is not a representation of the sticker, it is the
-      // sticker. Anything past the bottom edge is clipped here exactly as it
-      // will be clipped on paper.
-      labelBitmap = Label.render(compiled, images);
+      // pitch - so this is not a representation of the paper, it is the paper.
+      // On a sticker, anything past the bottom edge is clipped here exactly as
+      // it will be clipped on the label.
+      labelBitmap = Label.render(compiled, images, state.ink);
 
       paper.innerHTML = '';
       var bitmap = el('img', 'label-bitmap');
       bitmap.src = labelBitmap.dataUrl;
-      bitmap.alt = 'The sticker as it will print';
+      bitmap.alt = 'The paper as it will print';
       bitmap.style.width = compiled.chars + 'ch';
       paper.appendChild(bitmap);
 
-      renderLabelGauge();
-      $('previewMeta').textContent =
-        compiled.paper.widthMm + ' × ' + compiled.paper.heightMm + ' mm · ' +
-        labelBitmap.width + ' × ' + labelBitmap.height + ' dots · pitch ' +
-        (compiled.pitchDots / Doc.DOTS_PER_MM).toFixed(3) + ' mm (' +
-        compiled.pitchDots + ' dots, feeding ' + compiled.feedDots + ')';
+      if (compiled.paper.sticker) {
+        renderLabelGauge();
+        $('previewMeta').textContent =
+          compiled.paper.widthMm + ' × ' + compiled.paper.heightMm + ' mm · ' +
+          labelBitmap.width + ' × ' + labelBitmap.height + ' dots · pitch ' +
+          (compiled.pitchDots / Doc.DOTS_PER_MM).toFixed(3) + ' mm (' +
+          compiled.pitchDots + ' dots, feeding ' + compiled.feedDots + ')';
+      } else {
+        $('labelGauge').hidden = true;
+        $('previewMeta').textContent =
+          compiled.paper.short + ' · drawn as a bitmap · ' +
+          labelBitmap.width + ' × ' + labelBitmap.height + ' dots · ' +
+          (labelBitmap.height / Doc.DOTS_PER_MM).toFixed(1) + ' mm of paper';
+      }
       return;
     }
 
@@ -811,8 +847,166 @@
     }
   }
 
+  /**
+   * How label text is drawn. All of it lives on the device rather than in the
+   * code because the right values depend on the head, the stock and how worn
+   * the printer is - things only the person holding the sticker can judge.
+   *
+   * The preset row is a shortcut that writes the individual settings; the
+   * settings are what actually renders, so the row highlights only while they
+   * still match a preset exactly.
+   */
+  function bindInk() {
+    var presets = $('inkSeg').querySelectorAll('button');
+    var families = $('inkFamilySeg').querySelectorAll('button');
+    var weights = $('inkWeightSeg').querySelectorAll('button');
+    var modes = $('textModeSeg').querySelectorAll('button');
+
+    var columns = $('inkColumns');
+    var strokeX = $('inkStrokeX');
+    var strokeY = $('inkStrokeY');
+    var thresholdInput = $('inkThreshold');
+    var pitch = $('inkPitch');
+
+    var mark = function (buttons, attribute, value) {
+      for (var i = 0; i < buttons.length; i += 1) {
+        buttons[i].className =
+          buttons[i].getAttribute(attribute) === value ? 'is-active' : '';
+      }
+    };
+
+    var paint = function () {
+      var ink = state.ink;
+      var paper = Doc.PAPER_SIZES[state.paper];
+      var cols = state.columns || paper.chars;
+      // Die-cut stock has no choice: a sensorless advance needs every label to
+      // be the same height, which only a bitmap gives.
+      var drawn = !!paper.sticker || state.textMode === 'bitmap';
+
+      mark(presets, 'data-ink', Label.inkPresetName(ink));
+      mark(families, 'data-family', ink.family);
+      mark(weights, 'data-weight', ink.weight);
+      mark(modes, 'data-mode', paper.sticker ? 'bitmap' : state.textMode);
+
+      $('textModeField').hidden = !!paper.sticker;
+      // Everything below tunes the drawing, so it is inert while the printer is
+      // doing the typesetting. Left visible so it stays discoverable.
+      $('inkTuning').className = drawn ? '' : 'is-inert';
+
+      $('textModeHint').textContent = drawn
+        ? 'Drawn here and sent as an image, so the settings below apply. ' +
+          'Slower than the printer font, and the preview is exactly what prints.'
+        : 'Typeset by the printer in its built-in font - the sharpest it can ' +
+          'manage, but the only font it has, and the settings below cannot ' +
+          'reach it. Switch to Bitmap to control the type.';
+
+      columns.max = paper.chars;
+      columns.value = cols;
+      strokeX.value = ink.strokeX;
+      strokeY.value = ink.strokeY;
+      thresholdInput.value = ink.threshold;
+      pitch.value = ink.pitch;
+
+      $('columnsValue').textContent = cols + ' columns';
+      $('strokeXValue').textContent = ink.strokeX + (ink.strokeX === 1 ? ' dot' : ' dots');
+      $('strokeYValue').textContent = ink.strokeY + (ink.strokeY === 1 ? ' dot' : ' dots');
+      $('thresholdValue').textContent = ink.threshold;
+      $('pitchLineValue').textContent = Number(ink.pitch).toFixed(2) + '×';
+
+      // Roughly what the head will give each glyph, which is the number that
+      // actually predicts whether it prints cleanly.
+      $('columnsHint').textContent =
+        'Characters per line. Fewer columns means bigger letters - about ' +
+        Math.floor(paper.dots / cols) + ' dots wide each here, and big letters ' +
+        'print far more reliably than small ones.';
+
+      $('inkFamilyHint').textContent = Label.INK_FAMILIES[ink.family].columns
+        ? 'Monospace. Dividers and two-column rows line up exactly.'
+        : 'Proportional. Cleaner at small sizes, but dividers and two-column ' +
+          'rows will not line up, because those are laid out in characters.';
+    };
+
+    var update = function (apply) {
+      apply();
+      state.ink = Label.inkSettings(state.ink);
+      paint();
+      changed();
+    };
+
+    for (var p = 0; p < presets.length; p += 1) {
+      (function (button) {
+        button.addEventListener('click', function () {
+          update(function () {
+            // A preset sets everything except the family, which is a layout
+            // choice rather than an inking one and is left where it was.
+            var next = Label.inkSettings(button.getAttribute('data-ink'));
+            next.family = state.ink.family;
+            state.ink = next;
+          });
+        }, false);
+      })(presets[p]);
+    }
+
+    for (var m = 0; m < modes.length; m += 1) {
+      (function (button) {
+        button.addEventListener('click', function () {
+          update(function () { state.textMode = button.getAttribute('data-mode'); });
+        }, false);
+      })(modes[m]);
+    }
+
+    for (var f = 0; f < families.length; f += 1) {
+      (function (button) {
+        button.addEventListener('click', function () {
+          update(function () { state.ink.family = button.getAttribute('data-family'); });
+        }, false);
+      })(families[f]);
+    }
+
+    for (var w = 0; w < weights.length; w += 1) {
+      (function (button) {
+        button.addEventListener('click', function () {
+          update(function () { state.ink.weight = button.getAttribute('data-weight'); });
+        }, false);
+      })(weights[w]);
+    }
+
+    columns.addEventListener('input', function () {
+      update(function () { state.columns = Number(columns.value); });
+    }, false);
+
+    strokeX.addEventListener('input', function () {
+      update(function () { state.ink.strokeX = Number(strokeX.value); });
+    }, false);
+
+    strokeY.addEventListener('input', function () {
+      update(function () { state.ink.strokeY = Number(strokeY.value); });
+    }, false);
+
+    thresholdInput.addEventListener('input', function () {
+      update(function () { state.ink.threshold = Number(thresholdInput.value); });
+    }, false);
+
+    pitch.addEventListener('input', function () {
+      update(function () { state.ink.pitch = Number(pitch.value); });
+    }, false);
+
+    $('inkReset').addEventListener('click', function () {
+      update(function () {
+        state.ink = Label.inkSettings(Label.DEFAULT_INK);
+        state.columns = 0;
+      });
+    }, false);
+
+    paint();
+    return paint;
+  }
+
   function bindSetup() {
     var buttons = $('paperSeg').querySelectorAll('button');
+    // Assigned below; the paper controls the column range, so switching stock
+    // has to repaint the label-text card.
+    var repaintInk = null;
 
     var paint = function () {
       var paper = Doc.PAPER_SIZES[state.paper];
@@ -834,6 +1028,8 @@
           (paper.widthMm - paper.printableMm) + ' mm of the sticker cannot be reached.'
         : paper.printableMm + ' mm printable of ' + paper.widthMm + ' mm wide · ' +
           paper.chars + ' columns · continuous.';
+
+      if (repaintInk) repaintInk();
     };
 
     for (var i = 0; i < buttons.length; i += 1) {
@@ -861,6 +1057,7 @@
       changed();
     }, false);
 
+    repaintInk = bindInk();
     bindPitch();
 
     var copies = $('copies');
@@ -950,7 +1147,7 @@
 
   function printCalibration() {
     var paper = Doc.PAPER_SIZES['50x30'];
-    var bitmap = Label.renderCalibration(paper, state.labelPitchMm);
+    var bitmap = Label.renderCalibration(paper, state.labelPitchMm, state.ink);
 
     // A minimal document that carries the label geometry; the bitmap is the
     // calibration pattern rather than anything the user composed.
